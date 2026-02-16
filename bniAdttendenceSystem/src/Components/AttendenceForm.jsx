@@ -6,20 +6,20 @@ import {
   MenuItem,
   Typography,
   Box,
-  Button
+  Button,
+  CircularProgress
 } from "@mui/material";
 import toast, { Toaster } from "react-hot-toast";
-
-const employees = [
-  { id: 1, name: "Aarya Pandey", email: "aarya@gmail.com" },
-  { id: 2, name: "Rahul Sharma", email: "rahul@gmail.com" },
-  { id: 3, name: "Neha Verma", email: "neha@gmail.com" }
-];
 
 const API_URL =
   "https://script.google.com/macros/s/AKfycbwHQgo8zKLS1VhxRTHFEhDS1nirTw9NaU8IJ7VjJogCMtv47qXDaWaKbALqg94pOyWBuw/exec";
 
 function AttendanceForm() {
+
+  const [employees, setEmployees] = useState([]);
+  const [employeeLoading, setEmployeeLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     employee: "",
     email: "",
@@ -30,7 +30,30 @@ function AttendanceForm() {
     time: ""
   });
 
-  const [loading, setLoading] = useState(false);
+  // ✅ Fetch Employees
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      setEmployeeLoading(true);
+
+      const res = await fetch(`${API_URL}?action=getEmployee`);
+      const data = await res.json();
+
+      if (data.success) {
+        setEmployees(data.data);
+      } else {
+        toast.error("Failed to load employees");
+      }
+
+    } catch (error) {
+      toast.error("Error loading employees");
+    } finally {
+      setEmployeeLoading(false);
+    }
+  };
 
   // ✅ Auto Date & Time
   useEffect(() => {
@@ -110,21 +133,27 @@ function AttendanceForm() {
 
       toast.success("Attendance Submitted Successfully ✅");
 
-      // Reset form (keep location + time)
       setFormData((prev) => ({
         ...prev,
         employee: "",
         email: ""
       }));
+
     } catch (error) {
-      toast.error("Something went wrong. Please try again ❌");
+      toast.error("Something went wrong ❌");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="sm"
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center"
+      }}>
       <Toaster position="top-right" />
 
       <Paper elevation={4} sx={{ p: 4, mt: 5, borderRadius: 3 }}>
@@ -138,21 +167,35 @@ function AttendanceForm() {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
-          {/* Employee */}
+
+          {/* ✅ Employee with Loader */}
           <TextField
             select
             fullWidth
             label="Select Employee"
-            value={formData.employee}
+            value={
+              employeeLoading
+                ? "Fetching employees..."
+                : formData.employee
+            }
             onChange={handleChange}
             margin="normal"
             required
+            disabled={employeeLoading}
           >
-            {employees.map((emp) => (
-              <MenuItem key={emp.id} value={emp.name}>
-                {emp.name}
+
+            {employeeLoading ? (
+              <MenuItem value="Fetching employees...">
+                Fetching employees...
               </MenuItem>
-            ))}
+            ) : (
+              employees.map((emp, index) => (
+                <MenuItem key={index} value={emp.name}>
+                  {emp.name}
+                </MenuItem>
+              ))
+            )}
+
           </TextField>
 
           {/* Address */}
@@ -204,6 +247,7 @@ function AttendanceForm() {
           >
             {loading ? "Submitting..." : "Submit"}
           </Button>
+
         </Box>
       </Paper>
     </Container>
